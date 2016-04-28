@@ -1,0 +1,73 @@
+---
+title: "ml_coursera"
+author: "sriyoda"
+date: "April 28, 2016"
+output: html_document
+---
+
+PreProcessing
+
+```{r}
+library(caret)
+pml_train <- read.csv("pml-training.csv", na.strings = c("NA", ""), stringsAsFactors = F)
+pml_test <- read.csv("pml-testing.csv", na.strings = c("NA", ""), stringsAsFactors = F)
+#summary(pml_train)
+
+rIndex <- grep("X|user_name|cvtd_timestamp", names(pml_train))
+pml_train <- pml_train[, -rIndex]
+
+nzv <- nearZeroVar(pml_train)
+pml_train <- pml_train[, -nzv]
+
+tIndex <- createDataPartition(y = pml_train$classe, p = 0.2, list = FALSE)
+pml_sub_train <- pml_train[tIndex, ]  
+pml_test_train <- pml_train[-tIndex, ] 
+
+```
+
+# Random Forrest Model
+
+Random Forest is an ensemble approach that can also be thought of as a form of nearest neighbor predictor.
+
+The random forest starts with a standard machine learning technique called a “decision tree” which, in ensemble terms, corresponds to our weak learner. In a decision tree, an input is entered at the top and as it traverses down the tree the data gets bucketed into smaller and smaller sets.
+
+Strengths and weaknesses:
+Random forest runtimes are quite fast, and they are able to deal with unbalanced and missing data. Random Forest weaknesses are that when used for regression they cannot predict beyond the range in the training data, and that they may over-fit data sets that are particularly noisy. Of course, the best test of any algorithm is how well it works upon your own data set.
+
+# PreProcessing
+
+Some variables have ~Zero variance which indicates that they do not contribute to the model and are removed.
+
+cvtd_timestamp, raw_timestamp_part_1, raw_timestamp_part_2 are removed because they are factors instead of numeric values.
+
+```{r, echo=TRUE}
+control <- trainControl(method = "cv", number = 4, allowParallel = TRUE)
+modFit <- train(pml_sub_train$classe ~ ., data = pml_sub_train, method = "rf", 
+    prof = TRUE, trControl = control)
+
+results <- modFit$results
+round(max(results$Accuracy), 4) * 100
+
+```
+
+Random Forest has 56.19% accuracy.
+
+# Cross Validation
+```{r, eval=FALSE,  echo=TRUE}
+pred <- predict(modFit, pml_test_train)
+pml_test_train$predRight <- pred == pml_test_train$classe
+table(pred, pml_test_train$classe)
+
+```
+
+# Expected Sample Error
+```{r, eval=FALSE, echo=TRUE}
+cfM <- confusionMatrix(pred, pml_test_train$classe)
+cfM
+
+```
+
+
+
+
+
